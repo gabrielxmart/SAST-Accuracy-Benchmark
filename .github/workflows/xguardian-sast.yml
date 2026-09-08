@@ -68,7 +68,7 @@ jobs:
       - name: Run XGuardian SAST benchmark
         id: xguardian
         # Official SAST Action, release v26.6.2 pinned by commit SHA for reproducibility.
-        uses: xguardian-actions/actions/sast@6373d9375d3a859f602dcf53b37a3d8326c8a248
+        uses: xguardian-actions/actions/sast@development
         with:
           token: ${{ secrets.XGUARDIAN_TOKEN }}
           app_id: ${{ vars.XGUARDIAN_APP_ID }}
