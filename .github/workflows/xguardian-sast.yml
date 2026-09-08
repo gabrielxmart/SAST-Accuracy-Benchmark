@@ -95,7 +95,7 @@ jobs:
             echo "- Results: ${SCAN_URL}"
             echo "- Scanned directory: \`cases/\` only"
             echo "- Ground truth: \`benchmark_meta/ground_truth.full.json.gz\`"
-            echo "- XGuardian Action: \`xguardian-actions/actions/sast@6373d9375d3a859f602dcf53b37a3d8326c8a248\` (v26.6.2)"
+            echo "- XGuardian Action: \`xguardian-actions/actions/sast@development\` (v26.6.2)"
             echo
             echo "After exporting the SAST result as JSON, calculate TP/FP/FN/TN with:"
             echo
