@@ -1,4 +1,4 @@
-name: XGuardian SAST Accuracy Benchmark - Prod
+name: XGuardian SAST Accuracy Benchmark - Production
 
 on:
   push:
@@ -12,117 +12,31 @@ permissions:
   contents: read
 
 concurrency:
-  group: xguardian-sast-accuracy-${{ github.ref }}
+  group: xguardian-sast-accuracy-prod-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # ============================================================
-  # DEVELOPMENT
-  # ============================================================
-  sast-development:
-    name: XGuardian SAST - Development
+  sast-accuracy-scan:
+    name: Run XGuardian SAST Benchmark - Production
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
+    # Repository secrets are not available to pull requests from forks.
     if: >
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
+      # ============================================================
+      # Checkout
+      # ============================================================
+
       - name: Checkout benchmark
         uses: actions/checkout@v4
 
-      - name: Prepare scan payload
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          SCAN_DIR="scan-target"
-
-          if [[ ! -d "${SCAN_DIR}" ]]; then
-            echo "::error::${SCAN_DIR}/ directory does not exist"
-            exit 1
-          fi
-
-          JAVA_COUNT="$(find "${SCAN_DIR}" -type f -name '*.java' | wc -l | tr -d ' ')"
-
-          if [[ "${JAVA_COUNT}" -eq 0 ]]; then
-            echo "::error::No Java files found inside ${SCAN_DIR}/"
-            exit 1
-          fi
-
-          echo "Development scan payload ready."
-          echo "Scan directory: ${SCAN_DIR}/"
-          echo "Java files: ${JAVA_COUNT}"
-
-      - name: Validate Development configuration
-        shell: bash
-        env:
-          XGUARDIAN_TOKEN: ${{ secrets.XGUARDIAN_DEV_TOKEN }}
-          XGUARDIAN_APP_ID: ${{ vars.XGUARDIAN_DEV_APP_ID }}
-        run: |
-          set -euo pipefail
-
-          if [[ -z "${XGUARDIAN_TOKEN}" ]]; then
-            echo "::error::Missing repository secret XGUARDIAN_DEV_TOKEN"
-            exit 1
-          fi
-
-          if [[ ! "${XGUARDIAN_APP_ID}" =~ ^[1-9][0-9]*$ ]]; then
-            echo "::error::XGUARDIAN_DEV_APP_ID must be a positive numeric application ID"
-            exit 1
-          fi
-
-          echo "Development configuration is valid."
-          echo "App ID: ${XGUARDIAN_APP_ID}"
-
-      - name: Run XGuardian SAST - Development
-        id: xguardian_dev
-        uses: xguardian-actions/actions/sast@development
-        with:
-          token: ${{ secrets.XGUARDIAN_DEV_TOKEN }}
-          app_id: ${{ vars.XGUARDIAN_DEV_APP_ID }}
-          scan_directory: "scan-target"
-          translate: "true"
-          pdf: "true"
-          get_scan_id: "true"
-
-      - name: Publish Development scan metadata
-        if: success()
-        shell: bash
-        env:
-          APP_ID: ${{ steps.xguardian_dev.outputs.app_id }}
-          SCAN_ID: ${{ steps.xguardian_dev.outputs.scan_id }}
-          SCAN_URL: ${{ steps.xguardian_dev.outputs.scan_url }}
-          SCAN_VERSION: ${{ steps.xguardian_dev.outputs.scan_version }}
-        run: |
-          {
-            echo "## XGuardian SAST - Development"
-            echo
-            echo "- Environment: \`development\`"
-            echo "- App ID: \`${APP_ID}\`"
-            echo "- Scan ID: \`${SCAN_ID}\`"
-            echo "- Scan version: \`${SCAN_VERSION}\`"
-            echo "- Results: ${SCAN_URL}"
-            echo "- Scanned directory: \`scan-target/\` only"
-            echo "- XGuardian Action: \`xguardian-actions/actions/sast@development\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # ============================================================
-  # PRODUCTION
-  # ============================================================
-  sast-production:
-    name: XGuardian SAST - Production
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-
-    if: >
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
-
-    steps:
-      - name: Checkout benchmark
-        uses: actions/checkout@v4
+      # ============================================================
+      # Prepare scan payload
+      # ============================================================
 
       - name: Prepare scan payload
         shell: bash
@@ -147,7 +61,11 @@ jobs:
           echo "Scan directory: ${SCAN_DIR}/"
           echo "Java files: ${JAVA_COUNT}"
 
-      - name: Validate Production configuration
+      # ============================================================
+      # XGuardian Production configuration
+      # ============================================================
+
+      - name: Validate XGuardian Production configuration
         shell: bash
         env:
           XGUARDIAN_TOKEN: ${{ secrets.XGUARDIAN_PROD_TOKEN }}
@@ -165,12 +83,16 @@ jobs:
             exit 1
           fi
 
-          echo "Production configuration is valid."
-          echo "App ID: ${XGUARDIAN_APP_ID}"
+          echo "XGuardian Production configuration is valid."
+          echo "Application ID: ${XGUARDIAN_APP_ID}"
 
-      - name: Run XGuardian SAST - Production
-        id: xguardian_prod
-        uses: xguardian-actions/actions/sast@v26.6.2
+      # ============================================================
+      # XGuardian SAST Production
+      # ============================================================
+
+      - name: Run XGuardian SAST benchmark - Production
+        id: xguardian
+        uses: xguardian-actions/actions/sast@main
         with:
           token: ${{ secrets.XGUARDIAN_PROD_TOKEN }}
           app_id: ${{ vars.XGUARDIAN_PROD_APP_ID }}
@@ -179,17 +101,21 @@ jobs:
           pdf: "true"
           get_scan_id: "true"
 
-      - name: Publish Production scan metadata
+      # ============================================================
+      # Summary
+      # ============================================================
+
+      - name: Publish XGuardian Production scan metadata
         if: success()
         shell: bash
         env:
-          APP_ID: ${{ steps.xguardian_prod.outputs.app_id }}
-          SCAN_ID: ${{ steps.xguardian_prod.outputs.scan_id }}
-          SCAN_URL: ${{ steps.xguardian_prod.outputs.scan_url }}
-          SCAN_VERSION: ${{ steps.xguardian_prod.outputs.scan_version }}
+          APP_ID: ${{ steps.xguardian.outputs.app_id }}
+          SCAN_ID: ${{ steps.xguardian.outputs.scan_id }}
+          SCAN_URL: ${{ steps.xguardian.outputs.scan_url }}
+          SCAN_VERSION: ${{ steps.xguardian.outputs.scan_version }}
         run: |
           {
-            echo "## XGuardian SAST - Production"
+            echo "## XGuardian SAST Accuracy Benchmark - Production"
             echo
             echo "- Environment: \`production\`"
             echo "- App ID: \`${APP_ID}\`"
@@ -197,5 +123,5 @@ jobs:
             echo "- Scan version: \`${SCAN_VERSION}\`"
             echo "- Results: ${SCAN_URL}"
             echo "- Scanned directory: \`scan-target/\` only"
-            echo "- XGuardian Action: \`xguardian-actions/actions/sast@v26.6.2\`"
+            echo "- XGuardian Action: \`xguardian-actions/actions/sast@main\`"
           } >> "$GITHUB_STEP_SUMMARY"
