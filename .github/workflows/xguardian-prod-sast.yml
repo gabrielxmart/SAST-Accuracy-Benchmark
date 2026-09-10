@@ -1,18 +1,13 @@
 name: XGuardian SAST Accuracy Benchmark - Production
 
 on:
-  push:
-    branches:
-      - main
-      - feat/**
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: xguardian-sast-accuracy-prod-${{ github.ref }}
+  group: xguardian-sast-accuracy-production
   cancel-in-progress: false
 
 jobs:
@@ -21,21 +16,48 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
-    # Repository secrets are not available to pull requests from forks.
-    if: >
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
-
     steps:
       # ============================================================
-      # Checkout
+      # Checkout do benchmark
       # ============================================================
 
-      - name: Checkout benchmark
+      - name: Checkout Java Deep Accuracy Benchmark
         uses: actions/checkout@v4
+        with:
+          repository: gabrielxmart/Java-Deep-Accuracy-Benchmark
+          ref: main
+          fetch-depth: 1
 
       # ============================================================
-      # Prepare scan payload
+      # Confirmar checkout
+      # ============================================================
+
+      - name: Inspect benchmark checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Repository:"
+          git remote -v
+
+          echo
+          echo "Commit:"
+          git rev-parse HEAD
+
+          echo
+          echo "Working directory:"
+          pwd
+
+          echo
+          echo "Repository root:"
+          ls -la
+
+          echo
+          echo "scan-target structure:"
+          find scan-target -maxdepth 5 -type d | sort
+
+      # ============================================================
+      # Preparar payload
       # ============================================================
 
       - name: Prepare scan payload
@@ -50,7 +72,11 @@ jobs:
             exit 1
           fi
 
-          JAVA_COUNT="$(find "${SCAN_DIR}" -type f -name '*.java' | wc -l | tr -d ' ')"
+          JAVA_COUNT="$(
+            find "${SCAN_DIR}" -type f -name '*.java' |
+            wc -l |
+            tr -d ' '
+          )"
 
           if [[ "${JAVA_COUNT}" -eq 0 ]]; then
             echo "::error::No Java files found inside ${SCAN_DIR}/"
@@ -62,7 +88,7 @@ jobs:
           echo "Java files: ${JAVA_COUNT}"
 
       # ============================================================
-      # XGuardian Production configuration
+      # Validar configuração de produção
       # ============================================================
 
       - name: Validate XGuardian Production configuration
@@ -87,7 +113,7 @@ jobs:
           echo "Application ID: ${XGUARDIAN_APP_ID}"
 
       # ============================================================
-      # XGuardian SAST Production
+      # XGuardian SAST - Produção
       # ============================================================
 
       - name: Run XGuardian SAST benchmark - Production
