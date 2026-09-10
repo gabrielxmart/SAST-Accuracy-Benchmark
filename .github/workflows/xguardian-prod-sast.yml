@@ -1,4 +1,4 @@
-name: XGuardian SAST Accuracy Benchmark
+name: XGuardian SAST Accuracy Benchmark - Prod
 
 on:
   push:
